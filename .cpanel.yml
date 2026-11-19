@@ -1,0 +1,4 @@
+---
+deployment:
+  tasks:
+    - /bin/chmod -R a+rX dist || /bin/true

@@ -1,0 +1,37 @@
+DirectoryIndex dist/index.html index.html
+
+<IfModule mod_mime.c>
+  AddType application/javascript .js .mjs
+</IfModule>
+
+<IfModule mod_headers.c>
+  <FilesMatch "^index\.html$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires 0
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Block direct web access to source, git, and config files when repo root is docroot
+  RewriteRule ^(src|node_modules|public|server\.ts|package.*\.json|tsconfig\.json|vite\.config\.ts|eslint\.config\.js|metadata\.json|security_spec\.md|firebase-blueprint\.json|firestore\.rules.*|deploy-cpanel\.sh|\.cpanel\.yml|\.git|\.github|\.env) - [F,L]
+
+  # Root requests -> built production index (when dist exists)
+  RewriteCond %{DOCUMENT_ROOT}/dist/index.html -f
+  RewriteRule ^$ dist/index.html [L]
+
+  # Already rewritten into dist/
+  RewriteRule ^dist/ - [L]
+
+  # Serve built static files (assets, icons) from dist/
+  RewriteCond %{DOCUMENT_ROOT}/dist/$1 -f [OR]
+  RewriteCond %{DOCUMENT_ROOT}/dist/$1 -d
+  RewriteRule ^(.*)$ dist/$1 [L]
+
+  # SPA fallback to dist/index.html
+  RewriteCond %{DOCUMENT_ROOT}/dist/index.html -f
+  RewriteRule ^ dist/index.html [L]
+</IfModule>

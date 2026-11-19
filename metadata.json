@@ -1,0 +1,6 @@
+{
+  "name": "Inventory & Billing Pro — টাইলস ও পণ্য ইনভেন্টরি",
+  "description": "টাইলস ও সাধারণ পণ্য ইনভেন্টরি এবং বিলিং সফটওয়্যার — ক্যাশ মেমো, স্টক ও চালান, পাওনা আদায়, আয়-ব্যয়, SMS ও রিয়েল-টাইম ক্লাউড সিঙ্ক",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

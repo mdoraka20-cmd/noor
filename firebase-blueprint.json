@@ -1,0 +1,354 @@
+{
+  "entities": {
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Trusted administrator account record granting elevated permissions.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "maxLength": 200 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "createdAt"]
+    },
+    "ShopConfig": {
+      "title": "ShopConfig",
+      "description": "Shop profile, invoice header/footer, and memo numbering defaults for a tenant workspace.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "address": { "type": "string", "maxLength": 500 },
+        "phones": { "type": "string", "maxLength": 200 },
+        "web": { "type": "string", "maxLength": 200 },
+        "note": { "type": "string", "maxLength": 2000 },
+        "preparedBy": { "type": "string", "maxLength": 150 },
+        "startInvoiceNo": { "type": "string", "maxLength": 30 },
+        "footerText": { "type": "string", "maxLength": 500 },
+        "logoUrl": { "type": "string", "maxLength": 500000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "name", "address", "phones", "web", "note", "preparedBy", "startInvoiceNo", "footerText", "createdAt", "updatedAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Tile or non-tile inventory item with dimensions, rates, and live stock balances.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "id": { "type": "number" },
+        "code": { "type": "string", "maxLength": 80 },
+        "category": { "type": "string", "maxLength": 100 },
+        "vendor": { "type": "string", "maxLength": 120 },
+        "grade": { "type": "string", "maxLength": 30 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "isTile": { "type": "boolean" },
+        "w": { "type": "number" },
+        "h": { "type": "number" },
+        "scm": { "type": "number" },
+        "sftPack": { "type": "number" },
+        "qtyPack": { "type": "number" },
+        "rate": { "type": "number" },
+        "price": { "type": "number" },
+        "stockBox": { "type": "number" },
+        "stockPiece": { "type": "number" },
+        "stockSft": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "id", "code", "category", "name", "isTile", "w", "h", "scm", "sftPack", "qtyPack", "rate", "price", "createdAt", "updatedAt"]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Customer directory record containing PII (name, phone, address) and SMS consent status.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "id": { "type": "number" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "address": { "type": "string", "maxLength": 400 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "deal": { "type": "string", "maxLength": 150 },
+        "openDue": { "type": "number" },
+        "smsOptOut": { "type": "boolean" },
+        "smsConsent": { "type": "boolean" },
+        "smsConsentUpdatedAt": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "id", "name", "address", "phone", "deal", "openDue", "createdAt", "updatedAt"]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "Sales invoice / cash memo with bounded line items and delivery state.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "no": { "type": "number" },
+        "date": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "custId": { "type": "number" },
+        "custName": { "type": "string", "maxLength": 200 },
+        "address": { "type": "string", "maxLength": 400 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "deal": { "type": "string", "maxLength": 150 },
+        "comment": { "type": "string", "maxLength": 1000 },
+        "labor": { "type": "number" },
+        "discount": { "type": "number" },
+        "prevDue": { "type": "number" },
+        "cash": { "type": "number" },
+        "bank": { "type": "number" },
+        "bkash": { "type": "number" },
+        "items": { "type": "array" },
+        "deliveryStatus": { "type": "string", "enum": ["pending", "partial", "delivered"], "maxLength": 20 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "no", "date", "custId", "custName", "address", "phone", "deal", "comment", "labor", "discount", "prevDue", "cash", "bank", "bkash", "items", "deliveryStatus", "createdAt", "updatedAt"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Customer due collection and payment receipt record.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "id": { "type": "number" },
+        "date": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "custId": { "type": "number" },
+        "custName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "amount": { "type": "number" },
+        "discount": { "type": "number" },
+        "remark": { "type": "string", "maxLength": 500 },
+        "method": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "id", "date", "custId", "custName", "amount", "remark", "method", "createdAt", "updatedAt"]
+    },
+    "Txn": {
+      "title": "Txn",
+      "description": "Daily shop income or expense transaction entry.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "id": { "type": "number" },
+        "date": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "isIncome": { "type": "boolean" },
+        "head": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "amount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "id", "date", "isIncome", "head", "amount", "createdAt", "updatedAt"]
+    },
+    "StockInRecord": {
+      "title": "StockInRecord",
+      "description": "Vendor purchase stock-in entry synchronized with product inventory balances.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "id": { "type": "number" },
+        "vendorName": { "type": "string", "minLength": 1, "maxLength": 150 },
+        "vendorChallanNo": { "type": "string", "maxLength": 80 },
+        "referenceNo": { "type": "string", "maxLength": 80 },
+        "date": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "note": { "type": "string", "maxLength": 500 },
+        "items": { "type": "array" },
+        "totalAmount": { "type": "number" },
+        "receivedBy": { "type": "string", "maxLength": 120 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "id", "vendorName", "vendorChallanNo", "referenceNo", "date", "note", "items", "totalAmount", "receivedBy", "createdAt", "updatedAt"]
+    },
+    "DeliveryChallan": {
+      "title": "DeliveryChallan",
+      "description": "Split or full delivery challan and manual stock-out record.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "id": { "type": "number" },
+        "challanNo": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "outType": { "type": "string", "enum": ["challan", "manual"], "maxLength": 20 },
+        "manualRefNo": { "type": "string", "maxLength": 80 },
+        "invoiceNo": { "type": "number" },
+        "custId": { "type": "number" },
+        "custName": { "type": "string", "maxLength": 200 },
+        "address": { "type": "string", "maxLength": 400 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "deal": { "type": "string", "maxLength": 150 },
+        "date": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "vehicleNo": { "type": "string", "maxLength": 80 },
+        "driverName": { "type": "string", "maxLength": 120 },
+        "driverPhone": { "type": "string", "maxLength": 50 },
+        "note": { "type": "string", "maxLength": 500 },
+        "items": { "type": "array" },
+        "dispatchedBy": { "type": "string", "maxLength": 120 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "id", "challanNo", "invoiceNo", "custId", "custName", "address", "phone", "deal", "date", "items", "dispatchedBy", "createdAt", "updatedAt"]
+    },
+    "DealerDeal": {
+      "title": "DealerDeal",
+      "description": "Sales representative / broker / dealer directory entry.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "id": { "type": "number" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 150 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "address": { "type": "string", "maxLength": 300 },
+        "note": { "type": "string", "maxLength": 400 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "id", "name", "createdAt", "updatedAt"]
+    },
+    "AppUser": {
+      "title": "AppUser",
+      "description": "Local RBAC operator login profile for Admin Control panel.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "id": { "type": "string", "minLength": 1, "maxLength": 100, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "username": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 150 },
+        "role": { "type": "string", "enum": ["admin", "staff"], "maxLength": 20 },
+        "password": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "userCreatedAt": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "id", "username", "name", "role", "password", "createdAt", "updatedAt"]
+    },
+    "SmsLog": {
+      "title": "SmsLog",
+      "description": "SMS dispatch history and delivery report audit log.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "id": { "type": "number" },
+        "date": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "custId": { "type": "number" },
+        "custName": { "type": "string", "maxLength": 200 },
+        "phone": { "type": "string", "minLength": 1, "maxLength": 50 },
+        "triggerType": { "type": "string", "enum": ["invoice", "payment", "due_reminder", "bulk", "custom"], "maxLength": 30 },
+        "referenceNo": { "type": "string", "maxLength": 80 },
+        "message": { "type": "string", "minLength": 1, "maxLength": 1600 },
+        "provider": { "type": "string", "enum": ["sandbox", "bulksmsbd", "greenweb", "sslwireless", "twilio", "custom_webhook"], "maxLength": 40 },
+        "providerMessageId": { "type": "string", "maxLength": 150 },
+        "status": { "type": "string", "enum": ["DELIVERED", "SENT", "PENDING", "FAILED", "SKIPPED_DUPLICATE", "SKIPPED_OPT_OUT"], "maxLength": 30 },
+        "deliveryStatus": { "type": "string", "enum": ["DELIVERED", "SENT", "PENDING", "FAILED"], "maxLength": 20 },
+        "isUnicode": { "type": "boolean" },
+        "parts": { "type": "number" },
+        "cost": { "type": "number" },
+        "sentBy": { "type": "string", "maxLength": 120 },
+        "error": { "type": "string", "maxLength": 400 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "id", "date", "custName", "phone", "triggerType", "message", "provider", "status", "deliveryStatus", "isUnicode", "parts", "cost", "sentBy", "createdAt", "updatedAt"]
+    },
+    "SmsSettings": {
+      "title": "SmsSettings",
+      "description": "SMS gateway routing configuration and reusable message templates.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "smsEnabled": { "type": "boolean" },
+        "activeProvider": { "type": "string", "enum": ["sandbox", "bulksmsbd", "greenweb", "sslwireless", "twilio", "custom_webhook"], "maxLength": 40 },
+        "senderId": { "type": "string", "maxLength": 40 },
+        "costPerSms": { "type": "number" },
+        "duplicateWindowMinutes": { "type": "number" },
+        "requireConsent": { "type": "boolean" },
+        "appendOptOutText": { "type": "boolean" },
+        "customApiUrl": { "type": "string", "maxLength": 500 },
+        "customBalanceUrl": { "type": "string", "maxLength": 500 },
+        "customAuthHeader": { "type": "string", "maxLength": 300 },
+        "templates": { "type": "array" },
+        "updatedBy": { "type": "string", "maxLength": 120 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "smsEnabled", "activeProvider", "senderId", "costPerSms", "duplicateWindowMinutes", "requireConsent", "appendOptOutText", "templates", "createdAt", "updatedAt"]
+    },
+    "AppMetadata": {
+      "title": "AppMetadata",
+      "description": "Master lists (categories, vendors, payment methods), staff RBAC permissions, notice banner, and support contacts.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "kind": { "type": "string", "enum": ["lists", "notice", "contacts"], "maxLength": 30 },
+        "categories": { "type": "array" },
+        "vendors": { "type": "array" },
+        "paymentMethods": { "type": "array" },
+        "staffPermissions": { "type": "object" },
+        "notice": { "type": "object" },
+        "contacts": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "kind", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Admin role membership documents."
+    },
+    "/shops/{shopId}": {
+      "schema": { "$ref": "#/entities/ShopConfig" },
+      "description": "Shop profile and invoice settings documents per owner."
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Inventory product documents per owner."
+    },
+    "/customers/{customerId}": {
+      "schema": { "$ref": "#/entities/Customer" },
+      "description": "Customer directory documents per owner (PII protected)."
+    },
+    "/invoices/{invoiceId}": {
+      "schema": { "$ref": "#/entities/Invoice" },
+      "description": "Invoice / cash memo documents per owner."
+    },
+    "/payments/{paymentId}": {
+      "schema": { "$ref": "#/entities/Payment" },
+      "description": "Due collection payment receipt documents per owner."
+    },
+    "/txns/{txnId}": {
+      "schema": { "$ref": "#/entities/Txn" },
+      "description": "Daily shop income and expense entries per owner."
+    },
+    "/stock_ins/{stockInId}": {
+      "schema": { "$ref": "#/entities/StockInRecord" },
+      "description": "Vendor purchase stock-in records per owner."
+    },
+    "/delivery_challans/{challanId}": {
+      "schema": { "$ref": "#/entities/DeliveryChallan" },
+      "description": "Delivery challan and manual stock-out records per owner."
+    },
+    "/dealers/{dealerId}": {
+      "schema": { "$ref": "#/entities/DealerDeal" },
+      "description": "Dealer / broker directory entries per owner."
+    },
+    "/app_users/{appUserId}": {
+      "schema": { "$ref": "#/entities/AppUser" },
+      "description": "Operator login credentials and RBAC role profiles per owner (PII/credential protected)."
+    },
+    "/sms_logs/{smsLogId}": {
+      "schema": { "$ref": "#/entities/SmsLog" },
+      "description": "SMS audit trail and DLR status records per owner."
+    },
+    "/sms_settings/{settingId}": {
+      "schema": { "$ref": "#/entities/SmsSettings" },
+      "description": "SMS gateway and template settings per owner."
+    },
+    "/app_metadata/{metaId}": {
+      "schema": { "$ref": "#/entities/AppMetadata" },
+      "description": "Master lists, staff RBAC permissions, notice banner, and contacts per owner."
+    }
+  }
+}
