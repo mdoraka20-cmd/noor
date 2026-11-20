@@ -19,7 +19,7 @@ import {
   StaffPermissions,
 } from './types';
 import { StorageService } from './services/storage';
-import { CloudSyncState, FirestoreSyncService } from './services/firestoreSync';
+import { LiveSyncService } from './services/liveSync';
 import { HeaderToolbar } from './components/HeaderToolbar';
 import { DashboardView } from './components/DashboardView';
 import { OrderView } from './components/OrderView';
@@ -43,9 +43,6 @@ import { AdminAuthModal } from './components/AdminAuthModal';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
-  const [cloudSync, setCloudSync] = useState<CloudSyncState>(() =>
-    FirestoreSyncService.getState()
-  );
 
   // User Authentication State
   const [currentUser, setCurrentUser] = useState<AppUser>(() => StorageService.getCurrentUser());
@@ -194,17 +191,14 @@ export default function App() {
     updateTime();
     const interval = setInterval(updateTime, 60000);
 
-    FirestoreSyncService.init();
-    const unsubCloud = FirestoreSyncService.subscribe((nextState) => {
-      setCloudSync(nextState);
-    });
+    LiveSyncService.init();
 
     const unsubStorage = () => refreshAllData();
     window.addEventListener('app-storage-updated', unsubStorage);
 
     return () => {
       clearInterval(interval);
-      unsubCloud();
+      LiveSyncService.destroy();
       window.removeEventListener('app-storage-updated', unsubStorage);
     };
   }, [refreshAllData]);
@@ -362,11 +356,6 @@ export default function App() {
       <LoginPage
         shop={shop}
         users={users}
-        cloudSync={cloudSync}
-        onConnectCloud={() => FirestoreSyncService.signInWithGoogle()}
-        onSyncNow={() => FirestoreSyncService.syncNow()}
-        onDisconnectCloud={() => FirestoreSyncService.signOutGoogle()}
-        onDismissCloudError={() => FirestoreSyncService.clearError()}
         onLoginSuccess={handleLoginSuccess}
       />
     );
@@ -403,10 +392,6 @@ export default function App() {
         onLogout={handleLogout}
         permissions={staffPermissions}
         notice={notice}
-        cloudSync={cloudSync}
-        onConnectCloud={() => void FirestoreSyncService.signInWithGoogle()}
-        onSyncNow={() => void FirestoreSyncService.syncNow()}
-        onDismissCloudError={() => FirestoreSyncService.clearError()}
       />
 
       <main className="flex-1 overflow-auto">
@@ -635,11 +620,6 @@ export default function App() {
             txns={txns}
             shop={shop}
             onDataReload={refreshAllData}
-            cloudSync={cloudSync}
-            onConnectCloud={() => FirestoreSyncService.signInWithGoogle()}
-            onDisconnectCloud={() => FirestoreSyncService.signOutGoogle()}
-            onPullFromCloud={() => FirestoreSyncService.forcePullFromCloud()}
-            onPushToCloud={() => FirestoreSyncService.pushAllLocalToCloud()}
           />
         )}
 

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { ActiveTab, AppUser, NoticeBanner, ShopConfig, StaffPermissions } from '../types';
-import { CloudSyncState } from '../services/firestoreSync';
 import {
   FileText,
   Users,
@@ -24,9 +23,6 @@ import {
   X,
   Megaphone,
   MessageSquare,
-  Cloud,
-  CloudOff,
-  RefreshCw,
 } from 'lucide-react';
 
 interface HeaderToolbarProps {
@@ -39,10 +35,6 @@ interface HeaderToolbarProps {
   onLogout?: () => void;
   permissions?: StaffPermissions;
   notice?: NoticeBanner;
-  cloudSync?: CloudSyncState;
-  onConnectCloud?: () => void;
-  onSyncNow?: () => void;
-  onDismissCloudError?: () => void;
 }
 
 interface NavItem {
@@ -65,10 +57,6 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
   onLogout,
   permissions,
   notice,
-  cloudSync,
-  onConnectCloud,
-  onSyncNow,
-  onDismissCloudError,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -117,54 +105,6 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] text-slate-400 shrink-0">
-          {cloudSync && (
-            <button
-              type="button"
-              onClick={() => {
-                if (!cloudSync.userUid || cloudSync.status === 'disconnected') {
-                  onConnectCloud?.();
-                } else {
-                  onSyncNow?.();
-                }
-              }}
-              title={
-                cloudSync.errorMessage
-                  ? cloudSync.errorMessage
-                  : cloudSync.userEmail
-                  ? `ক্লাউড সিঙ্ক চালু (${cloudSync.userEmail}) — ক্লিক করে এখনই আপডেট নিন`
-                  : 'অন্যান্য ব্রাউজারের সাথে সিঙ্ক করতে Google দিয়ে কানেক্ট করুন'
-              }
-              className={`flex items-center gap-1.5 px-2 py-1 rounded border transition cursor-pointer ${
-                cloudSync.status === 'synced'
-                  ? 'bg-emerald-950/80 border-emerald-600/70 text-emerald-300 hover:bg-emerald-900'
-                  : cloudSync.status === 'syncing' || cloudSync.status === 'connecting'
-                  ? 'bg-sky-950/80 border-sky-600/70 text-sky-300'
-                  : cloudSync.status === 'error'
-                  ? 'bg-rose-950/80 border-rose-600/70 text-rose-300 hover:bg-rose-900'
-                  : 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800'
-              }`}
-            >
-              {cloudSync.status === 'syncing' || cloudSync.status === 'connecting' ? (
-                <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" />
-              ) : cloudSync.status === 'synced' ? (
-                <Cloud className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              ) : cloudSync.status === 'error' ? (
-                <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-              ) : (
-                <CloudOff className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              )}
-              <span className="hidden sm:inline font-semibold">
-                {cloudSync.status === 'synced'
-                  ? 'ক্লাউড সিঙ্ক'
-                  : cloudSync.status === 'syncing' || cloudSync.status === 'connecting'
-                  ? 'সিঙ্ক হচ্ছে...'
-                  : cloudSync.status === 'error'
-                  ? 'সিঙ্ক ত্রুটি'
-                  : 'ক্লাউড কানেক্ট'}
-              </span>
-            </button>
-          )}
-
           {/* User Profile / Switch Button */}
           <button
             onClick={onOpenLoginModal}
@@ -369,35 +309,6 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
           )}
         </div>
       </div>
-
-      {/* Cloud Sync Error Alert */}
-      {cloudSync?.errorMessage && (
-        <div className="bg-rose-950 text-rose-100 border-t border-rose-800 px-3 py-1.5 flex items-center justify-between gap-2 text-[11px]">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-            <span className="truncate font-medium">{cloudSync.errorMessage}</span>
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => (!cloudSync.userUid ? onConnectCloud?.() : onSyncNow?.())}
-              className="px-2 py-0.5 rounded bg-rose-700 hover:bg-rose-600 text-white font-bold cursor-pointer"
-            >
-              পুনরায় চেষ্টা করুন
-            </button>
-            {onDismissCloudError && (
-              <button
-                type="button"
-                onClick={onDismissCloudError}
-                className="p-0.5 text-rose-300 hover:text-white cursor-pointer"
-                aria-label="বন্ধ করুন"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Live Scrolling Notice Line */}
       {notice?.enabled && notice.message.trim() && (

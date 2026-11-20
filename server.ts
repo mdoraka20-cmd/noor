@@ -1,8 +1,11 @@
 import express from 'express';
 import dotenv from 'dotenv';
+import fs from 'node:fs';
+import fsPromises from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { WebSocketServer, WebSocket } from 'ws';
 
 dotenv.config();
 
@@ -10,6 +13,97 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = 3000;
+
+const SYNC_ALLOWED_KEYS = new Set<string>([
+  'inv_billing_fresh_v1_shop',
+  'inv_billing_fresh_v1_products',
+  'inv_billing_fresh_v1_customers',
+  'inv_billing_fresh_v1_invoices',
+  'inv_billing_fresh_v1_payments',
+  'inv_billing_fresh_v1_txns',
+  'inv_billing_fresh_v1_users',
+  'inv_billing_fresh_v1_dealers',
+  'inv_billing_fresh_v1_payment_methods',
+  'inv_billing_fresh_v1_categories',
+  'inv_billing_fresh_v1_vendors',
+  'inv_billing_fresh_v1_staff_perms',
+  'inv_billing_fresh_v1_notice',
+  'inv_billing_fresh_v1_contacts',
+  'inv_billing_fresh_v1_sms_logs',
+  'inv_billing_fresh_v1_sms_settings',
+  'inv_billing_fresh_v1_stock_ins',
+  'inv_billing_fresh_v1_delivery_challans',
+]);
+
+interface SyncKeyRecord {
+  version: number;
+  updatedAt: string;
+  value: unknown;
+}
+
+interface SyncStoreData {
+  version: number;
+  keys: Record<string, SyncKeyRecord>;
+}
+
+const SYNC_DATA_DIR = path.resolve(__dirname, 'data');
+const SYNC_STORE_PATH = path.join(SYNC_DATA_DIR, 'live-sync-store.json');
+
+function stableStringify(val: unknown): string {
+  if (val === null || typeof val !== 'object') {
+    return JSON.stringify(val);
+  }
+  if (Array.isArray(val)) {
+    return `[${val.map((item) => stableStringify(item)).join(',')}]`;
+  }
+  const obj = val as Record<string, unknown>;
+  const keys = Object.keys(obj)
+    .filter((k) => obj[k] !== undefined)
+    .sort();
+  return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(',')}}`;
+}
+
+function loadSyncStoreSync(): SyncStoreData {
+  try {
+    if (fs.existsSync(SYNC_STORE_PATH)) {
+      const raw = fs.readFileSync(SYNC_STORE_PATH, 'utf8');
+      const parsed = JSON.parse(raw) as Partial<SyncStoreData>;
+      if (parsed && typeof parsed.version === 'number' && parsed.keys && typeof parsed.keys === 'object') {
+        const cleanKeys: Record<string, SyncKeyRecord> = {};
+        for (const [k, rec] of Object.entries(parsed.keys)) {
+          if (SYNC_ALLOWED_KEYS.has(k) && rec && typeof rec === 'object' && 'value' in rec) {
+            cleanKeys[k] = {
+              version: typeof rec.version === 'number' ? rec.version : parsed.version,
+              updatedAt: typeof rec.updatedAt === 'string' ? rec.updatedAt : new Date().toISOString(),
+              value: rec.value,
+            };
+          }
+        }
+        return { version: parsed.version, keys: cleanKeys };
+      }
+    }
+  } catch (err) {
+    console.warn('Could not read existing live-sync-store.json, starting fresh:', err);
+  }
+  return { version: 0, keys: {} };
+}
+
+let syncWriteQueue: Promise<void> = Promise.resolve();
+
+function persistSyncStore(store: SyncStoreData): Promise<void> {
+  const snapshot = JSON.stringify(store);
+  syncWriteQueue = syncWriteQueue
+    .then(async () => {
+      await fsPromises.mkdir(SYNC_DATA_DIR, { recursive: true });
+      const tmpPath = `${SYNC_STORE_PATH}.tmp.${process.pid}.${Date.now()}`;
+      await fsPromises.writeFile(tmpPath, snapshot, 'utf8');
+      await fsPromises.rename(tmpPath, SYNC_STORE_PATH);
+    })
+    .catch((err) => {
+      console.error('Failed to persist live sync store:', err);
+    });
+  return syncWriteQueue;
+}
 
 interface ProviderMeta {
   id: string;
@@ -296,10 +390,186 @@ async function dispatchProviderSms(params: {
 async function startServer() {
   const app = express();
   const httpServer = http.createServer(app);
-  app.use(express.json({ limit: '1mb' }));
+  const syncStore = loadSyncStoreSync();
+  const wss = new WebSocketServer({ noServer: true });
+  const wsMeta = new WeakMap<WebSocket, { senderId: string; isAlive: boolean }>();
+
+  const broadcastSyncDelta = (payload: {
+    type: 'sync:delta';
+    version: number;
+    senderId: string;
+    keys: Record<string, unknown>;
+  }) => {
+    const encoded = JSON.stringify(payload);
+    for (const client of wss.clients) {
+      if (client.readyState !== WebSocket.OPEN) continue;
+      const meta = wsMeta.get(client);
+      if (meta && payload.senderId && meta.senderId === payload.senderId) {
+        continue;
+      }
+      try {
+        client.send(encoded);
+      } catch {
+        // ignore closed/broken socket
+      }
+    }
+  };
+
+  wss.on('connection', (ws, req) => {
+    let initialClientId = '';
+    try {
+      const reqUrl = new URL(req.url || '/ws/sync', 'http://localhost');
+      initialClientId = reqUrl.searchParams.get('clientId') || '';
+    } catch {
+      initialClientId = '';
+    }
+    wsMeta.set(ws, { senderId: initialClientId, isAlive: true });
+
+    ws.on('pong', () => {
+      const meta = wsMeta.get(ws);
+      if (meta) meta.isAlive = true;
+    });
+
+    ws.on('message', (raw) => {
+      try {
+        const msg = JSON.parse(raw.toString()) as { type?: string; senderId?: string };
+        if (msg.type === 'identify' && typeof msg.senderId === 'string') {
+          const meta = wsMeta.get(ws);
+          if (meta) meta.senderId = msg.senderId;
+        } else if (msg.type === 'ping') {
+          ws.send(JSON.stringify({ type: 'pong', version: syncStore.version }));
+        }
+      } catch {
+        // ignore malformed frames
+      }
+    });
+
+    try {
+      ws.send(JSON.stringify({ type: 'sync:hello', version: syncStore.version }));
+    } catch {
+      // ignore send errors on close
+    }
+  });
+
+  const wsHeartbeat = setInterval(() => {
+    for (const client of wss.clients) {
+      const meta = wsMeta.get(client);
+      if (meta && !meta.isAlive) {
+        client.terminate();
+        continue;
+      }
+      if (meta) meta.isAlive = false;
+      try {
+        client.ping();
+      } catch {
+        client.terminate();
+      }
+    }
+  }, 30000);
+  wsHeartbeat.unref();
+
+  httpServer.on('upgrade', (req, socket, head) => {
+    const pathname = (req.url || '').split('?')[0];
+    if (pathname !== '/ws/sync') {
+      return;
+    }
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit('connection', ws, req);
+    });
+  });
+
+  app.use(express.json({ limit: '8mb' }));
 
   app.get('/api/health', (_req, res) => {
     res.json({ ok: true, time: new Date().toISOString() });
+  });
+
+  app.get('/api/sync/state', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    const sinceRaw = req.query.since;
+    const since = typeof sinceRaw === 'string' && sinceRaw.trim() !== '' ? Number(sinceRaw) : 0;
+    const isIncremental = Number.isFinite(since) && since > 0 && since <= syncStore.version;
+
+    const keys: Record<string, unknown> = {};
+    if (isIncremental) {
+      if (since < syncStore.version) {
+        for (const [k, rec] of Object.entries(syncStore.keys)) {
+          if (rec.version > since) {
+            keys[k] = rec.value;
+          }
+        }
+      }
+    } else {
+      for (const [k, rec] of Object.entries(syncStore.keys)) {
+        keys[k] = rec.value;
+      }
+    }
+
+    res.json({
+      ok: true,
+      version: syncStore.version,
+      full: !isIncremental,
+      keys,
+    });
+  });
+
+  app.post('/api/sync/push', async (req, res) => {
+    try {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+      const body = (req.body || {}) as {
+        senderId?: string;
+        changes?: Record<string, unknown>;
+      };
+      const senderId = typeof body.senderId === 'string' ? body.senderId : '';
+      const changes = body.changes && typeof body.changes === 'object' ? body.changes : null;
+
+      if (!changes) {
+        res.status(400).json({ ok: false, error: 'Missing changes payload' });
+        return;
+      }
+
+      const nowIso = new Date().toISOString();
+      const changedValues: Record<string, unknown> = {};
+
+      for (const [key, nextVal] of Object.entries(changes)) {
+        if (!SYNC_ALLOWED_KEYS.has(key) || nextVal === undefined) {
+          continue;
+        }
+        const existing = syncStore.keys[key];
+        if (existing && stableStringify(existing.value) === stableStringify(nextVal)) {
+          continue;
+        }
+        syncStore.version += 1;
+        syncStore.keys[key] = {
+          version: syncStore.version,
+          updatedAt: nowIso,
+          value: nextVal,
+        };
+        changedValues[key] = nextVal;
+      }
+
+      const changedCount = Object.keys(changedValues).length;
+      if (changedCount > 0) {
+        await persistSyncStore(syncStore);
+        broadcastSyncDelta({
+          type: 'sync:delta',
+          version: syncStore.version,
+          senderId,
+          keys: changedValues,
+        });
+      }
+
+      res.json({
+        ok: true,
+        version: syncStore.version,
+        changedCount,
+      });
+    } catch (err) {
+      res.status(500).json({
+        ok: false,
+        error: err instanceof Error ? err.message : 'Sync push failed',
+      });
+    }
   });
 
   app.get('/api/sms/status', (_req, res) => {

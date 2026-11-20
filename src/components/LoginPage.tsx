@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { AppUser, ShopConfig } from '../types';
 import { StorageService } from '../services/storage';
-import { CloudSyncState } from '../services/firestoreSync';
 import {
   Lock,
   User,
@@ -12,32 +11,17 @@ import {
   EyeOff,
   LogIn,
   Building2,
-  Cloud,
-  CloudOff,
-  RefreshCw,
-  LogOut,
-  X,
 } from 'lucide-react';
 
 interface LoginPageProps {
   shop: ShopConfig;
   users?: AppUser[];
-  cloudSync?: CloudSyncState;
-  onConnectCloud?: () => Promise<boolean> | void;
-  onSyncNow?: () => Promise<boolean> | void;
-  onDisconnectCloud?: () => Promise<void> | void;
-  onDismissCloudError?: () => void;
   onLoginSuccess: (user: AppUser) => void;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({
   shop,
   users: propUsers,
-  cloudSync,
-  onConnectCloud,
-  onSyncNow,
-  onDisconnectCloud,
-  onDismissCloudError,
   onLoginSuccess,
 }) => {
   const [username, setUsername] = useState('');
@@ -45,27 +29,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  const [cloudNotice, setCloudNotice] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
-  const isCloudBusy =
-    cloudSync?.status === 'connecting' || cloudSync?.status === 'syncing';
-  const isCloudConnected = Boolean(cloudSync?.userUid);
-  const latestUsers =
-    propUsers && propUsers.length > 0 ? propUsers : StorageService.getUsers();
-
-  const handleCloudAction = async () => {
-    setCloudNotice('');
-    if (!isCloudConnected) {
-      await onConnectCloud?.();
-      return;
-    }
-    const ok = await onSyncNow?.();
-    if (ok) {
-      setCloudNotice('Firebase থেকে সর্বশেষ ইউজার ও দোকানের তথ্য আপডেট হয়েছে!');
-      setTimeout(() => setCloudNotice(''), 4000);
-    }
-  };
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,63 +68,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
           <Building2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span className="text-slate-100 font-bold truncate">{shop.name}</span>
         </div>
-
-        {cloudSync && (
-          <button
-            type="button"
-            onClick={() => void handleCloudAction()}
-            disabled={isCloudBusy}
-            title={
-              isCloudConnected
-                ? `ক্লাউড সিঙ্ক চালু (${cloudSync.userEmail || 'Google'}) — ক্লিক করে এখনই আপডেট নিন`
-                : 'Firebase থেকে সব ডাটা ও ইউজার সিঙ্ক করতে Google দিয়ে কানেক্ট করুন'
-            }
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded border text-[11px] font-semibold transition cursor-pointer shrink-0 ${
-              cloudSync.status === 'synced'
-                ? 'bg-emerald-950/80 border-emerald-600/70 text-emerald-300 hover:bg-emerald-900/70'
-                : cloudSync.status === 'error'
-                ? 'bg-rose-950/80 border-rose-600/70 text-rose-300 hover:bg-rose-900/70'
-                : 'bg-slate-800 hover:bg-slate-700 border-slate-600 text-slate-200'
-            }`}
-          >
-            {isCloudBusy ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin text-sky-400" />
-            ) : cloudSync.status === 'synced' ? (
-              <Cloud className="w-3.5 h-3.5 text-emerald-400" />
-            ) : cloudSync.status === 'error' ? (
-              <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
-            ) : (
-              <CloudOff className="w-3.5 h-3.5 text-slate-400" />
-            )}
-            <span>
-              {isCloudBusy
-                ? 'ক্লাউড সিঙ্ক হচ্ছে...'
-                : isCloudConnected
-                ? `সিঙ্ক চালু (${cloudSync.userEmail || 'Google'})`
-                : 'Google দিয়ে ক্লাউড সিঙ্ক চালু করুন'}
-            </span>
-          </button>
-        )}
       </div>
-
-      {cloudSync?.errorMessage && (
-        <div className="bg-rose-950/90 border-b border-rose-800 px-4 py-2 text-rose-200 text-xs flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-            <span>{cloudSync.errorMessage}</span>
-          </div>
-          {onDismissCloudError && (
-            <button
-              type="button"
-              onClick={onDismissCloudError}
-              className="p-0.5 text-rose-300 hover:text-white cursor-pointer shrink-0"
-              aria-label="ত্রুটি বন্ধ করুন"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Main Center Card */}
       <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
@@ -180,91 +88,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
           {/* Form Body */}
           <div className="p-5 sm:p-6 space-y-4">
-            {/* Firebase Sync Control Inside Login Card */}
-            {cloudSync && (
-              <div
-                className={`p-3 rounded-xl border space-y-2 ${
-                  cloudSync.status === 'synced'
-                    ? 'bg-emerald-950/40 border-emerald-700/60'
-                    : cloudSync.status === 'error'
-                    ? 'bg-rose-950/40 border-rose-700/60'
-                    : 'bg-slate-950/80 border-slate-700'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {isCloudBusy ? (
-                      <RefreshCw className="w-4 h-4 text-sky-400 animate-spin shrink-0" />
-                    ) : isCloudConnected ? (
-                      <Cloud className="w-4 h-4 text-emerald-400 shrink-0" />
-                    ) : (
-                      <CloudOff className="w-4 h-4 text-slate-400 shrink-0" />
-                    )}
-                    <div className="min-w-0">
-                      <div className="font-bold text-slate-100 text-[11px] truncate">
-                        {isCloudConnected
-                          ? `Firebase সিঙ্ক: ${cloudSync.userEmail}`
-                          : 'Firebase ক্লাউড সিঙ্ক (সংযুক্ত নয়)'}
-                      </div>
-                      <div className="text-[10px] text-slate-400">
-                        {isCloudConnected
-                          ? `সর্বশেষ সিঙ্ক: ${cloudSync.lastSyncedAt || 'এখন'} • ${latestUsers.length} ইউজার`
-                          : 'সব ডিভাইসে একই ডাটা পেতে প্রতিটি ডিভাইসে একই Google অ্যাকাউন্ট দিয়ে কানেক্ট করুন'}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {cloudNotice && (
-                  <div className="text-[11px] text-emerald-300 font-semibold flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                    <span>{cloudNotice}</span>
-                  </div>
-                )}
-
-                <div className="flex flex-wrap items-center gap-2">
-                  {!isCloudConnected ? (
-                    <button
-                      type="button"
-                      disabled={isCloudBusy}
-                      onClick={() => void handleCloudAction()}
-                      className="w-full py-2 px-3 rounded-lg bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 cursor-pointer transition"
-                    >
-                      <Cloud className="w-3.5 h-3.5" />
-                      <span>
-                        {isCloudBusy
-                          ? 'Google সংযোগ হচ্ছে...'
-                          : 'Google দিয়ে Firebase সিঙ্ক চালু করুন'}
-                      </span>
-                    </button>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        disabled={isCloudBusy}
-                        onClick={() => void handleCloudAction()}
-                        className="flex-1 py-1.5 px-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 cursor-pointer transition"
-                      >
-                        <RefreshCw className={`w-3 h-3 ${isCloudBusy ? 'animate-spin' : ''}`} />
-                        <span>এখনই আপডেট নিন</span>
-                      </button>
-                      {onDisconnectCloud && (
-                        <button
-                          type="button"
-                          disabled={isCloudBusy}
-                          onClick={() => void onDisconnectCloud()}
-                          className="py-1.5 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 font-semibold text-[11px] flex items-center gap-1 cursor-pointer transition"
-                        >
-                          <LogOut className="w-3 h-3" />
-                          <span>ডিসকানেক্ট</span>
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-
             {errorMsg && (
               <div className="p-3 bg-rose-950/80 border border-rose-700/80 rounded-xl text-rose-300 flex items-center gap-2.5">
                 <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
