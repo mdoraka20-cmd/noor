@@ -46,7 +46,7 @@ interface SyncStoreData {
   keys: Record<string, SyncKeyRecord>;
 }
 
-const SYNC_DATA_DIR = path.resolve(__dirname, 'data');
+const SYNC_DATA_DIR = path.resolve(__dirname, '.sync-data');
 const SYNC_STORE_PATH = path.join(SYNC_DATA_DIR, 'live-sync-store.json');
 
 function stableStringify(val: unknown): string {

@@ -10,4 +10,4 @@ cgi-bin/
 .well-known/
 .env*
 !.env.example
-data/
+/.sync-data/
